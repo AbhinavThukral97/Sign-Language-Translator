@@ -8,6 +8,22 @@ cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
+def getNewLabel(name):
+	current_directory = os.getcwd()
+	dataset_directory = os.path.join(current_directory,'Dataset')
+	if not os.path.exists(dataset_directory):
+		os.makedirs(dataset_directory)
+	final_directory = os.path.join(current_directory, 'Dataset', name)
+	subdirectory_1 = os.path.join(final_directory, 'Original')
+	subdirectory_2 = os.path.join(final_directory, 'Threshold')
+	subdirectory_3 = os.path.join(final_directory, 'Contour')
+	if not os.path.exists(final_directory):
+		os.makedirs(final_directory)
+		os.makedirs(subdirectory_1)
+		os.makedirs(subdirectory_2)
+		os.makedirs(subdirectory_3)    	
+	return subdirectory_1,subdirectory_2,subdirectory_3
+
 while(True):
     ret, img = cap.read()
     img = cv2.flip(img,1)
@@ -53,3 +69,19 @@ while(True):
 
     if k == 27:
         break
+
+    elif k == ord('c') or k == ord('C'):
+    	break
+
+cap.release()
+cv2.destroyAllWindows()
+print('Enter label name for this capture: ',end="")
+newlabel = input()
+original_dir,threshold_dir,contour_dir = getNewLabel(newlabel)
+number = len(os.listdir(original_dir)) + 1
+original_img_path = os.path.join(original_dir, str(number)+'.jpg')
+threshold_img_path = os.path.join(threshold_dir, str(number)+'.jpg')
+contour_img_path = os.path.join(contour_dir, str(number)+'.jpg')
+cv2.imwrite(original_img_path,crop_img)
+cv2.imwrite(threshold_img_path,dilation)
+cv2.imwrite(contour_img_path,drawing)
