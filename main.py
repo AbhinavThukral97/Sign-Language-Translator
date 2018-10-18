@@ -1,55 +1,87 @@
 import cv2
 import numpy as np
+import pandas as pd
 import math
 import sys
 import os
+import tensorflow as tf 
+from keras.models import load_model
 
 cap = cv2.VideoCapture(0)
-cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+img_width = 1280
+img_height = 720
+cap.set(cv2.CAP_PROP_FRAME_WIDTH, img_width)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT, img_height)
+
+def image_resize(image, height = 45, inter = cv2.INTER_AREA):
+    resized = cv2.resize(image, (height,height), interpolation = inter)
+    return resized
+
+model = load_model('trained.h5')
+
+encoding_chart = pd.read_csv('label_encoded.csv')
+encoding_values = encoding_chart['Encoded'].values
+encoding_labels = encoding_chart['Label'].values
+int_to_label = dict(zip(encoding_values,encoding_labels))
+
+font = cv2.FONT_HERSHEY_DUPLEX
+
+history = list()
+counts = dict()
+history_length = 15
+threshold = 0.8
+
+start = 200
+end = 500
+alpha = 0.35
+
+sentence_raw = list()
+
+color = (59, 185, 246)
 
 while(True):
     ret, img = cap.read()
     img = cv2.flip(img,1)
-    start = 200
-    end = 450
+    alpha_layer = img.copy()
+    source = img.copy()
 
-    cv2.rectangle(img, (start,start), (end,end), (102,185,255),5)
-    crop_img = img[start:end, start:end]
+    crop_img = source[start:end, start:end]
+    cv2.circle(alpha_layer, (int((start+end)/2),int((start+end)/2)), int((end - start)/2), color ,-1)
+    cv2.rectangle(alpha_layer,(0,img_height - 100),(img_width,img_height),(0,0,0),-1)
+    cv2.addWeighted(alpha_layer, alpha, img, 1 - alpha,0, img)
 
     grey = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
+    resized = image_resize(crop_img)
+    predicted = model.predict(np.array([resized]))
+
+    predicted_char = int_to_label[np.argmax(predicted)]
     
-    value = (35, 35)
-    blurred = cv2.GaussianBlur(grey, value, 0)
+    if(len(history)>=history_length):
+        keys = list(counts.keys())
+        values = list(counts.values())
+        arg = np.argmax(values)
+        if(values[arg]>threshold*history_length):
+            sentence_raw.append(keys[arg])
+        counts.clear()
+        history.clear()
+    if(predicted_char != 'None'):
+        history.append(predicted_char)
+        if(predicted_char in counts):
+            counts[predicted_char]+=1
+        else:
+            counts[predicted_char]=1
+        textsize = cv2.getTextSize(predicted_char, font, 5,5)[0]
+        textX = int(start + ((end - start) - textsize[0])/2)
+        textY = int(end - ((end - start) - textsize[1])/2)
+        cv2.putText(img, predicted_char, (textX,textY),font,5,color,5)
 
-    _, thresh1 = cv2.threshold(blurred, 135, 255,
-                               cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    scribble = "".join(sentence_raw)
+    sentencesize = cv2.getTextSize(scribble, font, 1,2)[0]
+    cv2.putText(img, scribble, (start,img_height - 15 - int((100 - sentencesize[1])/2)),font,1,(255,255,255),2)
 
-    kernal = np.ones((10,10),np.uint8)
-    erosion = cv2.erode(thresh1,kernal,iterations=1)
-    dilation = cv2.dilate(erosion,kernal,iterations=1)
-
-    image, contours, hierarchy = cv2.findContours(thresh1.copy(),cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
-    
-    cnt = max(contours, key = lambda x: cv2.contourArea(x))
-    hull = cv2.convexHull(cnt)
-    drawing = np.zeros(crop_img.shape,np.uint8)
-    cv2.drawContours(drawing, [cnt], 0, (0, 255, 0), 0)
-    cv2.drawContours(drawing, [hull], 0,(0, 0, 255), 0)
-
-    hull = cv2.convexHull(cnt, returnPoints=False)
-
-    defects = cv2.convexityDefects(cnt, hull)
-    count_defects = 0
-    cv2.drawContours(thresh1, contours, -1, (0, 255, 0), 3)
-
-    dilation_rgb = cv2.cvtColor(dilation, cv2.COLOR_GRAY2RGB)
-
-    all_img = np.hstack((drawing, crop_img,dilation_rgb))
     cv2.imshow('WebCam', img)
-    cv2.imshow('All', all_img)
-
     k = cv2.waitKey(10)
-
+    if k == ord('x') or k == ord('X'):
+        sentence_raw.clear()
     if k == 27:
         break

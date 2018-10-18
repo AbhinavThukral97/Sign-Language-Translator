@@ -8,26 +8,9 @@ cap = cv2.VideoCapture(0)
 cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
 cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
 
-def generate_name(length = 3):
-    char_list = "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z".split()
-    name = []
-    for i in range(length):
-        name.append(char_list[np.random.randint(len(char_list))])
-    return "".join(name)
-
-def getNewLabel(name,value = 'Dataset'):
-	current_directory = os.getcwd()
-	dataset_directory = os.path.join(current_directory,value)
-	if not os.path.exists(dataset_directory):
-		os.makedirs(dataset_directory)
-	final_directory = os.path.join(dataset_directory, name)
-	subdirectory_1 = os.path.join(final_directory, 'Original')
-	if not os.path.exists(final_directory):
-		os.makedirs(final_directory)
-		os.makedirs(subdirectory_1)  	
-	return subdirectory_1
-
-capt = 0
+def image_resize(image, height = 50, inter = cv2.INTER_AREA):
+    resized = cv2.resize(image, (height,height), interpolation = inter)
+    return resized
 
 while(True):
     ret, img = cap.read()
@@ -74,21 +57,3 @@ while(True):
 
     if k == 27:
         break
-
-    elif k == ord('c') or k == ord('C'):
-        capt=1
-        break
-
-if(capt==1):
-    cap.release()
-    cv2.destroyAllWindows()
-    print('Enter label name for this capture: ',end="")
-    newlabel = input()
-    original_dir = getNewLabel(newlabel)
-    number = len(os.listdir(original_dir)) + 1
-
-    original_img_path = os.path.join(original_dir, generate_name()+'.jpg')
-
-    cv2.imwrite(original_img_path,crop_img)
-    #cv2.imwrite(threshold_img_path,dilation)
-    #cv2.imwrite(contour_img_path,drawing)
