@@ -80,8 +80,8 @@ model.add(Dense(len(labels_encoded[0]),activation='softmax'))
 
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-epochs = 100
+epochs = 200
 
-history = model.fit(np.array(images), labels_encoded, epochs=epochs, batch_size=16)
+history = model.fit(np.array(images), labels_encoded, epochs=epochs, batch_size=32)
 
 model.save('trained.h5')

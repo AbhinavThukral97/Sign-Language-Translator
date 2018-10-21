@@ -7,6 +7,8 @@ import os
 import tensorflow as tf 
 from keras.models import load_model
 
+from wordsegment import load,segment
+
 cap = cv2.VideoCapture(0)
 img_width = 1280
 img_height = 720
@@ -29,15 +31,17 @@ font = cv2.FONT_HERSHEY_DUPLEX
 history = list()
 counts = dict()
 history_length = 15
-threshold = 0.8
+threshold = 0.9
 
 start = 200
 end = 500
-alpha = 0.35
+alpha = 0.4
 
 sentence_raw = list()
 
 color = (59, 185, 246)
+
+load()
 
 while(True):
     ret, img = cap.read()
@@ -47,7 +51,6 @@ while(True):
 
     crop_img = source[start:end, start:end]
     cv2.circle(alpha_layer, (int((start+end)/2),int((start+end)/2)), int((end - start)/2), color ,-1)
-    cv2.rectangle(alpha_layer,(0,img_height - 100),(img_width,img_height),(0,0,0),-1)
     cv2.addWeighted(alpha_layer, alpha, img, 1 - alpha,0, img)
 
     grey = cv2.cvtColor(crop_img, cv2.COLOR_BGR2GRAY)
@@ -70,14 +73,21 @@ while(True):
             counts[predicted_char]+=1
         else:
             counts[predicted_char]=1
-        textsize = cv2.getTextSize(predicted_char, font, 5,5)[0]
+        textsize = cv2.getTextSize(predicted_char, font, 6,7)[0]
         textX = int(start + ((end - start) - textsize[0])/2)
         textY = int(end - ((end - start) - textsize[1])/2)
-        cv2.putText(img, predicted_char, (textX,textY),font,5,color,5)
+        cv2.putText(img, predicted_char, (textX,textY),font,6,color,7)
 
     scribble = "".join(sentence_raw)
-    sentencesize = cv2.getTextSize(scribble, font, 1,2)[0]
-    cv2.putText(img, scribble, (start,img_height - 15 - int((100 - sentencesize[1])/2)),font,1,(255,255,255),2)
+    sentence = " ".join(segment(scribble))
+    sentencesize = cv2.getTextSize(sentence, font, 1,2)[0]
+
+    if(len(sentence)>0):
+        cv2.rectangle(img,(int((img_width - sentencesize[0])/2) - 20,img_height - 140),(int((img_width - sentencesize[0])/2 + sentencesize[0] + 20),img_height - 100 + sentencesize[1]),(0,0,0),-1)
+    if(len(sentence)>30):
+        sentence_raw = list(segment(scribble)[-1])
+
+    cv2.putText(img, sentence, (int((img_width - sentencesize[0])/2),img_height - 100),font,1,(255,255,255),2)
 
     cv2.imshow('WebCam', img)
     k = cv2.waitKey(10)
